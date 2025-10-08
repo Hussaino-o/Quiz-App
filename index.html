@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quiz Game</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        width: 800px;
+        margin: 20px auto;
+        background-color: #f5f5f5;
+        padding: 15px;
+        .info {
+          background-color: white;
+          padding: 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 15px;
+        }
+        .question-container {
+          .result {
+            padding: 10px;
+            background-color: white;
+            span {
+              color: rgb(211, 36, 36);
+              font-weight: bold;
+            }
+          }
+          .question-info {
+            background: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            .question {
+              font-size: 25px;
+              font-weight: bold;
+              margin: 5px 0px 20px;
+            }
+            ul.question-answers {
+              list-style: none;
+              padding: 0;
+              margin: 0;
+              li {
+                padding: 15px;
+                background-color: #f7f7f7;
+                color: rgb(117, 117, 117);
+                display: flex;
+                font-size: 15px;
+                font-weight: bold;
+                justify-content: flex-start;
+                align-items: center;
+                input {
+                  cursor: pointer;
+                  margin: 0 10px 0 0;
+                  &:checked + label {
+                    color: #0075ff;
+                  }
+                }
+                label {
+                  cursor: pointer;
+                }
+                &:not(:last-child) {
+                  border-bottom: 1px solid #bebebe;
+                }
+              }
+            }
+          }
+          input[type="submit"] {
+            width: 100%;
+            background-color: #0075ff;
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: none;
+            &:hover {
+              outline: none;
+            }
+          }
+          .progress-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: white;
+            padding: 20px;
+            border-top: 1px solid #ccc;
+            ul.progress {
+              list-style: none;
+              padding: 0;
+              margin: 0;
+              display: flex;
+              justify-content: start;
+              align-items: center;
+              li {
+                width: 20px;
+                height: 20px;
+                background-color: #e9e9e9;
+                border-radius: 50%;
+                margin-right: 5px;
+                &.on-hold,
+                &.completed {
+                  background-color: #0075ff;
+                }
+              }
+            }
+          }
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="info">
+        <span class="category">Category: HTML</span>
+        <span class="questions-count">
+          Questions Count:
+          <span></span>
+        </span>
+      </div>
+      <div class="question-container">
+        <div class="question-info">
+          <div class="question"></div>
+          <ul class="question-answers"></ul>
+        </div>
+        <input class="answer-button" type="submit" value="Submit Answer" />
+        <div class="progress-info">
+          <ul class="progress"></ul>
+          <span class="count"></span>
+        </div>
+      </div>
+    </div>
+    <script>
+      const questionContainer = document.querySelector(".question-container");
+      const questionsCountEle = document.querySelector(".questions-count span");
+      const theQuestion = document.querySelector(".question");
+      const questionAnswers = document.querySelector("ul.question-answers");
+      const progress = document.querySelector(".progress");
+      const answerButton = document.querySelector(".answer-button");
+
+      let questionsCount = 0;
+      let currectAnswers = 0;
+
+      function getQuestions() {
+        let myRequest = new XMLHttpRequest();
+
+        myRequest.onload = function () {
+          if (this.status === 200 && this.readyState === 4) {
+            let questions = JSON.parse(this.responseText);
+
+            questionsCountEle.innerHTML = questions.length;
+
+            generateQuestions(questions[questionsCount]);
+            generateProgressCircles(questions.length);
+
+            answerButton.addEventListener("click", () =>
+              checkAnswer(questions, questions[questionsCount - 1].right_answer)
+            );
+
+            questionTimer()
+          }
+        };
+        myRequest.open("GET", "html_questions.json", true);
+        myRequest.send();
+      }
+
+      getQuestions();
+
+      function generateQuestions(questions) {
+        theQuestion.textContent = questions.title;
+
+        questionAnswers.innerHTML = "";
+        for (let i = 1; i <= 4; i++) {
+          const li = document.createElement("li");
+
+          const input = document.createElement("input");
+          if (i === 1) input.checked = true;
+          input.type = "radio";
+          input.name = "questionIn";
+          input.id = `q${i}`;
+
+          const label = document.createElement("label");
+          label.htmlFor = `q${i}`;
+          label.textContent = questions[`answer_${i}`];
+
+          li.appendChild(input);
+          li.appendChild(label);
+          questionAnswers.appendChild(li);
+        }
+
+        questionsCount++;
+      }
+
+      function generateProgressCircles(numOfQuestions) {
+        progress.innerHTML = "";
+        for (let i = 0; i < numOfQuestions; i++) {
+          progress.innerHTML += `
+            <li ${i === 0 ? `class="on-hold"` : ""}></li>
+          `;
+        }
+      }
+
+      function checkAnswer(questions, rightAnswer) {
+        const answers = document.querySelectorAll(
+          "ul.question-answers li input"
+        );
+        answers.forEach((e) => {
+          if (e.checked) {
+            if (e.nextElementSibling.textContent === rightAnswer) {
+              currectAnswers++;
+            }
+          }
+        });
+
+        const progressCircles = document.querySelectorAll("ul.progress li");
+        progressCircles[questionsCount - 1].classList.remove("on-hold");
+        progressCircles[questionsCount - 1].classList.add("completed");
+        if (questionsCount < questions.length) progressCircles[questionsCount].classList.add("on-hold");
+
+        if (questionsCount < questions.length) {
+          generateQuestions(questions[questionsCount]);
+          questionTimer()
+        } else {
+          finishQuestions(questions.length);
+        }
+      }
+
+      function finishQuestions(numOfQuestions) {
+        questionContainer.innerHTML = `
+          <div class="result">
+            <span class="score">
+              ${
+                currectAnswers < Math.floor(numOfQuestions / 2)
+                  ? "Bad"
+                  : currectAnswers === Math.floor(numOfQuestions / 2) &&
+                    currectAnswers < numOfQuestions
+                  ? "Good"
+                  : "Exalent"
+              }
+            </span>
+            , ${currectAnswers} From ${numOfQuestions}
+          </div>
+        `;
+      }
+
+
+      function questionTimer() {
+        let timer = 3
+
+        let secondsTimer = setInterval(() => {
+          document.querySelector('.count').textContent = `00:0${timer--}`
+          if (timer === -1) timer = 3
+        }, 1000);
+
+        let questionTimer = setTimeout(() => {
+          clearInterval(secondsTimer)
+          timer = 3
+          answerButton.click()
+        }, 4000);
+
+        answerButton.addEventListener("click", () => {
+          clearInterval(secondsTimer)
+          clearTimeout(questionTimer)
+        })
+
+      }
+    </script>
+  </body>
+</html>
